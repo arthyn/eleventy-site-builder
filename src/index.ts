@@ -18,6 +18,7 @@ function createWindow(socketName: string): void {
   const mainWindow = new BrowserWindow({
     height: 600,
     width: 800,
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
       nodeIntegration: true,
       enableRemoteModule: true,
