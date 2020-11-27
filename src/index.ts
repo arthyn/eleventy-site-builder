@@ -19,7 +19,7 @@ function createWindow(socketName: string): void {
     height: 600,
     width: 800,
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
       enableRemoteModule: true,
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY
     }

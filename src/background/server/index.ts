@@ -1,22 +1,23 @@
 import { ipcRenderer, remote } from 'electron'
-import Handlers from './handlers'
 import * as ipc from './ipc'
 
-let isDev, version
+export function init<T extends ipc.HandlerMap<T>>(handlers: T): void {
+  let isDev, version
 
-if (process.argv[2] === '--subprocess') {
-  isDev = false
-  version = process.argv[3]
+  if (process.argv[2] === '--subprocess') {
+    isDev = false
+    version = process.argv[3]
 
-  const socketName = process.argv[4]
-  ipc.init(socketName, Handlers)
-} else {
-  isDev = true
-  version = remote.app.getVersion()
+    const socketName = process.argv[4]
+    ipc.init(socketName, handlers)
+  } else {
+    isDev = true
+    version = remote.app.getVersion()
 
-  ipcRenderer.on('set-socket', (event, { name }) => {
-    ipc.init(name, Handlers)
-  })
+    ipcRenderer.on('set-socket', (event, { name }) => {
+      ipc.init(name, handlers)
+    })
+  }
+
+  console.log(version, isDev)
 }
-
-console.log(version, isDev)

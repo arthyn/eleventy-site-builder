@@ -1,6 +1,7 @@
 import { Client } from 'node-ipc'
 import { ClientMessage, Reply, Error, ServerMessage } from '../../background/server/ipc'
 import { v4 } from 'uuid'
+import { Handlers } from '../../background/main';
 
 type Listener = (...args: unknown[]) => unknown;
 
@@ -21,7 +22,7 @@ init()
 // State
 const replyHandlers = new Map<string, ReplyHandler>()
 const listeners = new Map<string, Listener[]>()
-let messageQueue: Stringified<ServerMessage>[] = []
+let messageQueue: Stringified<ServerMessage<Handlers>>[] = []
 let socketClient: Client = null
 
 // Functions
@@ -56,6 +57,7 @@ function onMessage(data: string): void {
 
 function handleResponse(msg: Reply | Error): void {
     const handler = replyHandlers.get(msg.id)
+    debugger;
     if (!handler)
         return;
 
@@ -80,12 +82,12 @@ function onConnect(client: Client, onOpen: () => void): void {
     onOpen();
 }
 
-export function send(name: string, args: unknown[]): Promise<unknown> {
+export function send<T extends keyof Handlers>(name: T, args?: Parameters<Handlers[T]>): ReturnType<Handlers[T]> {
     return new Promise((resolve, reject) => {
         const id = v4()
-        const msg: ServerMessage = { id, name, args };
+        const msg: ServerMessage<Handlers> = { id, name, args };
         const stringMsg = JSON.stringify(msg);
-
+        debugger;
         replyHandlers.set(id, { resolve, reject })
 
         if (socketClient) {
@@ -93,7 +95,7 @@ export function send(name: string, args: unknown[]): Promise<unknown> {
         } else {
             messageQueue.push(stringMsg)
         }
-    })
+    }) as ReturnType<Handlers[T]>;
 }
 
 export function listen(name: string, listener: Listener): () => void {

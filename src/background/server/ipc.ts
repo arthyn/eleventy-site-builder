@@ -1,10 +1,10 @@
 import { Socket } from "net"
 import ipc from 'node-ipc'
 
-export interface ServerMessage {
+export interface ServerMessage<T extends HandlerMap<T>> {
     id: string;
-    name: string;
-    args: unknown[];
+    name: keyof T;
+    args: Parameters<T[keyof T]>;
 }
 
 export type ClientMessageTypes = 'reply' | 'error' | 'push';
@@ -30,11 +30,13 @@ export type ClientMessage = Reply | Error | Push;
 
 export type Handler<Result = unknown> = (...args: unknown[]) => Promise<Result>
 
-export type HandlerMap = {
-    [key: string]: Handler;
+export type HandlerEntry<HandlerSet extends HandlerMap<HandlerSet>> = { name: keyof HandlerSet, handler: HandlerSet[keyof HandlerSet] }
+
+export type HandlerMap<T> = {
+    [key in keyof T]: Handler;
 }
 
-async function handle({ id, args }: ServerMessage, handler: Handler, socket: Socket): Promise<void> {
+async function handle<T extends HandlerMap<T>>({ id, args }: ServerMessage<T>, handler: HandlerMap<T>[keyof T], socket: Socket): Promise<void> {
     try {
         const result = await handler(args)
         const reply: Reply = { type: 'reply', id, result }
@@ -48,17 +50,17 @@ async function handle({ id, args }: ServerMessage, handler: Handler, socket: Soc
     }
 }
 
-function noHandle({ id, name }: ServerMessage, socket: Socket) {
+function noHandle<T extends HandlerMap<T>>({ id, name }: ServerMessage<T>, socket: Socket) {
     const reply: Reply = { type: 'reply', id, result: null };
 
     ipc.server.emit(socket, 'message', JSON.stringify(reply))
     console.warn('Unknown method: ' + name)
 }
 
-function serve(handlers: HandlerMap) {
-    ipc.server.on('message', (data: Stringified<ServerMessage>, socket: Socket) => {
+function serve<T extends HandlerMap<T>>(handlers: HandlerMap<T>) {
+    ipc.server.on('message', (data: Stringified<ServerMessage<T>>, socket: Socket) => {
         const msg = JSON.parse(data)
-        const handler: Handler = handlers[msg.name];
+        const handler = handlers[msg.name];
 
         if (!handler)
             return noHandle(msg, socket);
@@ -72,7 +74,7 @@ export function send(name: string, args: unknown[]): void {
     ipc.server.broadcast('message', JSON.stringify(msg))
 }
 
-export function init(socketName: string, handlers: HandlerMap): void {
+export function init<T>(socketName: string, handlers: HandlerMap<T>): void {
     ipc.config.id = socketName
     ipc.config.silent = true
 
