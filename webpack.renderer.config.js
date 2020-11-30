@@ -2,6 +2,7 @@ const path = require('path');
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const rules = require('./webpack.rules');
 const plugins = require('./webpack.plugins');
+const FixNedb = require('./webpack.fixnedbpath');
 
 rules.push({
   test: /\.css$/i,
@@ -29,6 +30,7 @@ module.exports = {
   },
   plugins: plugins,
   resolve: {
-    extensions: ['.js', '.ts', '.jsx', '.tsx', '.css']
+    extensions: ['.js', '.ts', '.jsx', '.tsx', '.css'],
+    plugins: [new FixNedb()]
   },
 };

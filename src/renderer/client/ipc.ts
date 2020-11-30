@@ -3,7 +3,7 @@ import { ClientMessage, Reply, Error, ServerMessage } from '../../background/ser
 import { v4 } from 'uuid'
 import { Handlers } from '../../background/main';
 
-type Listener = (...args: unknown[]) => unknown;
+type Listener = (args: unknown) => unknown;
 
 interface ReplyHandler {
     resolve: (value?: unknown) => void;
@@ -48,7 +48,7 @@ function onMessage(data: string): void {
     } else if (msg.type === 'push') {
         const listens = listeners.get(msg.name)
         if (listens) {
-            listens.forEach(listener => listener(...msg.args))
+            listens.forEach(listener => listener(msg.args))
         }
     } else {
         throw new Error('Unknown message type: ' + JSON.stringify(msg))
@@ -57,7 +57,6 @@ function onMessage(data: string): void {
 
 function handleResponse(msg: Reply | Error): void {
     const handler = replyHandlers.get(msg.id)
-    debugger;
     if (!handler)
         return;
 
@@ -87,7 +86,7 @@ export function send<T extends keyof Handlers>(name: T, args?: Parameters<Handle
         const id = v4()
         const msg: ServerMessage<Handlers> = { id, name, args };
         const stringMsg = JSON.stringify(msg);
-        debugger;
+        
         replyHandlers.set(id, { resolve, reject })
 
         if (socketClient) {

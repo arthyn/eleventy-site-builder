@@ -1,17 +1,19 @@
 import React, { FunctionComponent, useState } from 'react';
-import { handlers } from '../../background/project-service';
+import { handlers } from '../../background/services/project-service';
 import { send } from '../client/ipc';
 import { Button } from '../shared/Button';
 import { Layout } from '../shared/Layout';
 import { Logo } from '../shared/Logo';
+import { useStore } from '../store';
 
 export const Welcome: FunctionComponent = () => {
-    const [directory, setDirectory] = useState('');
+    const directory = useStore(state => state.projectsDirectory);
+
     async function open() {
         const directory = await send(handlers.setProjectsDirectory);
 
         if (directory)
-            setDirectory(directory);
+            useStore.setState({ projectsDirectory: directory });
     }
     
     return (
