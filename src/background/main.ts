@@ -1,9 +1,9 @@
 import db from './db'
 import { HandlerEntry, HandlerMap, send } from './server/ipc';
 import { init } from './server'
-import { ProjectHandlers, ProjectService } from './services/project-service';
+import { ProjectHandlers, ProjectsData, ProjectService } from './services/project-service';
 
-export type Handlers = ProjectHandlers;
+export type Handlers = ProjectHandlers & { init: () => Promise<ProjectsData> };
 
 function addHandlers(handlerMap: HandlerMap<Handlers>, handlers: HandlerEntry<Handlers>[]): void {
     for (const entry of handlers) {
@@ -19,15 +19,18 @@ async function start() {
 
     //initialize handlers
     addHandlers(handlerMap, projectService.handlers());
+    addHandlers(handlerMap, [
+        { name: 'init', handler: async () => await projectService.init() }
+    ])
     init(handlerMap);
 
-    const dataCollection = await Promise.all([
-        projectService.init()
-    ]);
-    const initialData = Object.assign({}, ...dataCollection);
-    debugger;
-    //broadcast initial data
-    send('init', initialData);
+    //debugger;
+    // const dataCollection = await Promise.all([
+    //     projectService.init()
+    // ]);
+    // const initialData = Object.assign({}, ...dataCollection);
+    // //broadcast initial data
+    // send('init', initialData);
 
     console.log('initializing background process')
 }

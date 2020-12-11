@@ -3,6 +3,8 @@ import { remote } from 'electron';
 import { HandlerEntry } from '../server/ipc';
 import { promises } from 'fs';
 import { dirs } from '../utilities';
+import path from 'path'
+import { map } from 'async';
 
 const { readdir, readFile } = promises;
 
@@ -76,7 +78,8 @@ export class ProjectService {
     }
 
     async openProject(directory: string): Promise<void> {
-        this.currentProject = new Project(directory);
+        const projectInfo = await this.getEleventyProject(directory);
+        this.currentProject = new Project(projectInfo);
         await this.db.settings.update({ name: 'current-project' }, { value: directory }, { upsert: true });
     }
 
@@ -86,30 +89,44 @@ export class ProjectService {
     }
 
     async findEleventyProjects(): Promise<Project[] | undefined> {
+        //debugger;
         if (!this.projectsDirectory)
             return undefined;
 
         const directories = dirs(this.projectsDirectory);
-        return directories
-                    .filter(this.isEleventyProject)
-                    .map(dir => new Project(dir))
+        const eleventyDirs = await map<string, ProjectInfo>(directories, async dir => this.getEleventyProject(dir));
+        const projects = eleventyDirs
+                .filter(dir => !!dir)
+                .map(dir => new Project(dir));
+
+        return projects.concat(projects, projects, projects, projects, projects)
     }
 
-    async isEleventyProject(dir: string): Promise<boolean> {
-        debugger;
+    async getEleventyProject(dir: string): Promise<ProjectInfo> {
         const files = await readdir(dir);
-        const path = files.find(file => file.indexOf('package.json') >= 0);
-        const file = await readFile(path, { encoding: 'utf-8' });
+        const packageFile = files.find(file => file.indexOf('package.json') >= 0);
+        if (!dir || !packageFile)
+            return null;
+
+        const file = await readFile(path.join(dir, packageFile), { encoding: 'utf-8' });
         const packageJSON: PackageJSON = JSON.parse(file);
 
-        const dependencies = Object.keys(packageJSON.dependencies)
-                                .concat(Object.keys(packageJSON.devDependencies));
+        const dependencies = Object.keys(packageJSON.dependencies || {})
+                                .concat(Object.keys(packageJSON.devDependencies || {}));
 
-        return dependencies.includes('@11ty/eleventy');
+        if (!dependencies.includes('@11ty/eleventy'))
+            return null;
+
+        return {
+            dir,
+            packageFile: packageJSON
+        }
     }
 }
 
 interface PackageJSON {
+    name: string;
+    description: string;
     dependencies: {
         [key: string]: string;
     };
@@ -129,8 +146,15 @@ interface Package {
     dev: boolean;
 }
 
+interface ProjectInfo {
+    dir: string;
+    packageFile: PackageJSON;
+}
+
 export class Project {
     directory: string;
+    name: string;
+    description: string;
     tasks: Task[];
     packages: Package[];
     config: any; //Need type for eleventy config attributes would have to parse JS though
@@ -138,8 +162,10 @@ export class Project {
         repo: 
     */
 
-    constructor(directory: string) {
-        this.directory = directory;
+    constructor(data: ProjectInfo) {
+        this.directory = data.dir;
+        this.name = path.parse(this.directory).name || data.packageFile.name;
+        this.description = data.packageFile.description;
         this.init();
     }
 

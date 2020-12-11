@@ -1,9 +1,14 @@
-@tailwind base;
+@import "tailwindcss/base";
 
-@tailwind components;
+@import "tailwindcss/components";
+@import './styles/components';
 
-@tailwind utilities;
+@import "tailwindcss/utilities";
 
 .window-drag {
     -webkit-app-region: drag
+}
+
+.content-area-height {
+    height: calc(100vh - 4.5rem);
 }

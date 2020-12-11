@@ -1,6 +1,8 @@
 import { Socket } from "net"
 import ipc from 'node-ipc'
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export interface ServerMessage<T extends HandlerMap<T>> {
     id: string;
     name: keyof T;
@@ -30,7 +32,10 @@ export type ClientMessage = Reply | Error | Push;
 
 export type Handler<Result = unknown> = (...args: unknown[]) => Promise<Result>
 
-export type HandlerEntry<HandlerSet extends HandlerMap<HandlerSet>> = { name: keyof HandlerSet, handler: HandlerSet[keyof HandlerSet] }
+export type HandlerEntry<HandlerSet> = { 
+    name: keyof HandlerSet, 
+    handler: Handler
+}
 
 export type HandlerMap<T> = {
     [key in keyof T]: Handler;
@@ -62,6 +67,8 @@ function serve<T extends HandlerMap<T>>(handlers: HandlerMap<T>) {
         const msg = JSON.parse(data)
         const handler = handlers[msg.name];
 
+        isDev && console.log(Date.now(), 'server received:', msg);
+
         if (!handler)
             return noHandle(msg, socket);
 
@@ -72,6 +79,7 @@ function serve<T extends HandlerMap<T>>(handlers: HandlerMap<T>) {
 export function send(name: string, args: unknown[]): void {
     const msg: Push = { type: 'push', name, args };
     ipc.server.broadcast('message', JSON.stringify(msg))
+    isDev && console.log(Date.now(), 'server sending:', msg);
 }
 
 export function init<T>(socketName: string, handlers: HandlerMap<T>): void {
@@ -80,4 +88,6 @@ export function init<T>(socketName: string, handlers: HandlerMap<T>): void {
 
     ipc.serve(() => serve(handlers))
     ipc.server.start()
+
+    isDev && console.log(Date.now(), 'server starting', 'socket:', socketName)
 }
